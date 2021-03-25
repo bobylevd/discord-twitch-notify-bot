@@ -1,0 +1,3 @@
+git+git://github.com/bobylevd/Twitch-Python@master
+redis
+discord.py
