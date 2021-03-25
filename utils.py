@@ -1,26 +1,17 @@
 import os
 
 import discord
-import redis
 import twitch
 from twitch.helix import Stream
 
+from database.redis_client import all_keys, get_stream
 
 helix = twitch.Helix(os.environ['TWITCH_ID'], os.environ['TWITCH_SECRET'])
 
 
-r = redis.Redis(
-    host=os.environ["REDIS_HOST"],
-    port=os.environ["REDIS_PORT"],
-    password=os.environ["REDIS_PASSWORD"],
-    ssl=True,
-    decode_responses=True
-)
-
-
 def get_stream_status():
-    for stream in helix.streams(user_login=r.keys("*")):
-        if stream.game_name.lower() == r.hget(stream.user.login, "game_name").lower():
+    for stream in helix.streams(user_login=all_keys()):
+        if stream.game_name.lower() == get_stream(stream, "game_name"):
             return stream
     return None
 
