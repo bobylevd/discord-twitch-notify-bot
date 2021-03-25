@@ -25,10 +25,20 @@ async def on_ready():
 
 @bot.command()
 async def add(ctx, streamer_name, game_name):
+    logger.info(f"adding streamer {streamer_name}, with game {game_name}")
     r.hset(streamer_name.lower(), "game_name", game_name)
     r.hset(streamer_name.lower(), "guild_id", ctx.guild.id)
     r.hset(streamer_name.lower(), "channel_id", ctx.channel.id)
+    await ctx.send(f"Streamer {streamer_name} was added to watch list")
+
+
+@bot.command()
+async def remove(ctx, streamer_name):
+    for k in r.hkeys(streamer_name.lower()):
+        logger.debug(f"removing key {k} from {streamer_name}")
+        r.hdel(streamer_name.lower(), k)
+    await ctx.send(f"Streamer {streamer_name} was removed from watch list")
 
 
 bot.add_cog(TwitchCheck(bot))
-bot.run(os.environ['TOKEN'])
+bot.run(os.environ['DISCORD_TOKEN'])
