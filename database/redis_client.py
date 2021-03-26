@@ -10,23 +10,26 @@ r = redis.Redis(
     decode_responses=True
 )
 
-def all_keys():
-    return r.keys("*")
+def r_keys(pattern):
+    return r.keys(pattern)
 
-def r_set(key, field, value):
-    return r.hset(key.lower(), field.lower(), value.lower())
+def h_set(name, key=None, value=None, mapping=None):
+    return r.hset(name, key=key, value=value, mapping=mapping)
 
-def r_get(key, field):
-    return r.hget(key.lower(), field.lower())
+def s_set(name, value):
+    return r.set(name, value)
+
+def h_get(key, field):
+    return r.hget(key, field)
 
 def r_get_keys(key):
-    return r.hkeys(key.lower())
+    return r.hkeys(key)
 
 def r_del_keys(name, *keys):
-    return r.hdel(name.lower(), *keys)
+    return r.hdel(name, *keys)
 
 def get_stream(stream, field):
-    return r_get(stream.user.login, field)
+    return h_get(stream.user.login, field)
 
 def set_stream(stream, field, value):
-    return r_set(stream.user.login, field, value)
+    return h_set(stream.user.login, field, value)

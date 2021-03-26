@@ -1,14 +1,12 @@
-import datetime
 import logging
+from datetime import datetime, timedelta
 
 from discord.ext import commands, tasks
 
-from database.redis_client import get_stream, set_stream
+from database.redis_client import h_get, h_set
 from utils import get_stream_status, generate_embed
 
 logger = logging.getLogger()
-
-TIME_FORMAT = "%m/%d/%Y, %H:%M:%S"
 
 
 class TwitchCheck(commands.Cog):
@@ -19,23 +17,23 @@ class TwitchCheck(commands.Cog):
     def cog_unload(self):
         self.check.cancel()
 
-    @tasks.loop(minutes=10.0)
+    @tasks.loop(minutes=1.0)
     async def check(self):
-        stream = get_stream_status()
-        if stream:
-            channel = self.client.get_channel(int(get_stream(stream, "channel_id")))
-            curr_time = datetime.datetime.utcnow()
-            timedelta = datetime.timedelta(hours=4)
-            next_check = curr_time + timedelta
+        now = datetime.now()
+        skip_until = now + timedelta(hours=6)
+        now_ts = now.timestamp()
+        skip_until_ts = skip_until.timestamp()
 
-            def timestamp(stream):
-                ts = get_stream(stream, "timestamp")
-                return ts if ts else curr_time.strftime(TIME_FORMAT)
-
-            if curr_time >= datetime.datetime.strptime(timestamp(stream), TIME_FORMAT):
-                if channel:
+        stream = None
+        for guild in self.client.guilds:
+            stream = get_stream_status(guild.id)
+            channel = self.client.get_channel(int(h_get(guild.id, "channel_id")))
+            if stream is not None:
+                logger.info(f"found stream by {stream.user.login}")
+                if now_ts >= float(h_get(f"{guild.id}:{stream.user.login}", "timestamp")):
+                    h_set(f"{guild.id}:{stream.user.login}", "timestamp", skip_until_ts)
+                    logger.info(f"able to send notification, updating timestamp from {now_ts} to {skip_until_ts}")
                     await channel.send(embed=generate_embed(stream))
-                    set_stream(stream, "timestamp", next_check.strftime(TIME_FORMAT))
 
     @check.before_loop
     async def before_check(self):

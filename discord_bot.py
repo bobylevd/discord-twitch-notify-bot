@@ -6,7 +6,7 @@ import discord
 from discord.ext import commands
 
 from cogs.twitch import TwitchCheck
-from database.redis_client import r_set, r_get_keys, r_del_keys, all_keys, r_get
+from database.redis_client import h_set, r_get_keys, r_del_keys, r_keys, h_get
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 logger = logging.getLogger()
@@ -26,26 +26,25 @@ async def on_ready():
 @bot.command()
 async def add(ctx, streamer_name, game_name):
     logger.info(f"adding streamer {streamer_name}, with game {game_name}")
-    r_set(streamer_name, "game_name", game_name)
-    r_set(streamer_name, "guild_id", str(ctx.guild.id))
-    r_set(streamer_name, "channel_id", str(ctx.channel.id))
-    await ctx.send(f"Streamer {streamer_name} was added to watch list")
+    h_set(f"{ctx.guild.id}", "channel_id", ctx.channel.id)
+    h_set(f"{ctx.guild.id}:{streamer_name.lower()}", "game_name", game_name)
+    await ctx.message.add_reaction('✅')
 
 
 @bot.command()
 async def remove(ctx, streamer_name):
     logger.info(f"removing streamer {streamer_name}")
-    r_del_keys(streamer_name, *r_get_keys(streamer_name))
-    await ctx.send(f"Streamer {streamer_name} was removed from watch list")
+    r_del_keys(f"{ctx.guild.id}:{streamer_name.lower()}", *r_get_keys(f"{ctx.guild.id}:{streamer_name.lower()}"))
+    await ctx.message.add_reaction('☠')
+    await ctx.message.add_reaction('✅')
 
 
 @bot.command()
 async def list_all(ctx):
     logger.info(f"requested all streamers info")
-    streamers = all_keys()
     await ctx.send("Currently tracking:")
-    for s in streamers:
-        await ctx.send(f"{s} - {r_get(s, 'game_name')}")
+    for s in [s.split(":")[1] for s in r_keys(f"{ctx.guild.id}:*")]:
+        await ctx.send(f"{s} - {h_get(f'{ctx.guild.id}:{s}', 'game_name')}")
 
 
 bot.add_cog(TwitchCheck(bot))
