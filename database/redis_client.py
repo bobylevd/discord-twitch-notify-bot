@@ -5,8 +5,6 @@ import redis
 r = redis.Redis(
     host=os.environ["REDIS_HOST"],
     port=os.environ["REDIS_PORT"],
-    password=os.environ["REDIS_PASSWORD"],
-    ssl=True,
     decode_responses=True
 )
 
