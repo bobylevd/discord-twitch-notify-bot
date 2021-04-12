@@ -13,6 +13,6 @@ ENV TWITCH_ID twitch_id
 ENV TWITCH_SECRET twitch_secret
 ENV REDIS_HOST redis_host
 ENV REDIS_PORT redis_port
-ENV REDIS_PASSWORD redis_password
+ENV REDIS_DB redis_db
 
 ENTRYPOINT ["python", "/discordbot/discord_bot.py"]
