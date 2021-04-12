@@ -26,7 +26,6 @@ class TwitchClient:
         """
         try:
             streams = self.helix.streams(user_login=self.streamers)
-            logger.info("TWITCH: stream(s) found")
             return streams
         except StreamNotFound:
             logger.debug("No streams found")
