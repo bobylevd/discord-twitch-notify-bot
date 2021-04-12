@@ -26,7 +26,7 @@ class TwitchCheck(commands.Cog):
     async def status(self, ctx):
         await ctx.message.add_reaction("👌")
 
-    @tasks.loop(seconds=15.0)
+    @tasks.loop(seconds=60.0)
     async def check(self):
         logger.info("COG: checking streams")
         for guild in self.client.guilds:
