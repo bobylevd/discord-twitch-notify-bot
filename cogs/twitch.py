@@ -1,4 +1,5 @@
 import logging
+import datetime
 
 from discord.ext import commands, tasks
 
@@ -12,12 +13,12 @@ logger = logging.getLogger()
 def _get_game_name(guild, stream):
     return r.hget(f"{guild.id}:{stream.user.login}", "game_name").lower()
 
-
 class TwitchCheck(commands.Cog):
     def __init__(self, client):
         self.client = client
         self.channel_ids = {}
         self.check.start()
+        self.notification_timeout = datetime.timedelta(hours=1)
 
     def cog_unload(self):
         self.check.cancel()
@@ -36,9 +37,21 @@ class TwitchCheck(commands.Cog):
             channel = self._get_channel(self.channel_ids[guild.id])
             if channel and streams:
                 for st in filter(lambda s: s.game_name.lower() == _get_game_name(guild, s), streams):
+                    should_notify = False
+
                     logger.info(f"COG: stream by {st.user.login} is live, checking timestamp")
-                    if st.started_at != r.hget(f"{guild.id}:{st.user.login}", "timestamp"):
-                        r.hset(f"{guild.id}:{st.user.login}", "timestamp", st.started_at)
+                    prev_stamp = r.hget(f"{guild.id}:{st.user.login}", "timestamp")
+                    if prev_stamp is not None:
+                        prev_dt = datetime.datetime.strptime(prev_stamp, "%Y-%m-%dT%H:%M:%S%z")
+                        cur_dt = datetime.datetime.strptime(st.started_at, "%Y-%m-%dT%H:%M:%S%z")
+                        if (cur_dt - prev_dt) < self.notification_timeout:
+                            should_notify = True
+                    else:
+                        should_notify = True
+
+                    r.hset(f"{guild.id}:{st.user.login}", "timestamp", st.started_at)
+
+                    if should_notify:
                         logger.info(f"COG: sending embed for {st.user.login}")
                         await channel.send(embed=generate_embed(st))
 
