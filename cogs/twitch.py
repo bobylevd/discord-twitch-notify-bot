@@ -44,7 +44,7 @@ class TwitchCheck(commands.Cog):
                     if prev_stamp is not None:
                         prev_dt = datetime.datetime.strptime(prev_stamp, "%Y-%m-%dT%H:%M:%S%z")
                         cur_dt = datetime.datetime.strptime(st.started_at, "%Y-%m-%dT%H:%M:%S%z")
-                        if (cur_dt - prev_dt) < self.notification_timeout:
+                        if (cur_dt - prev_dt) > self.notification_timeout:
                             should_notify = True
                     else:
                         should_notify = True
