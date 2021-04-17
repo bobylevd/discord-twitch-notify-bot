@@ -21,6 +21,7 @@ class TwitchCheck(commands.Cog):
         self.notification_timeout = datetime.timedelta(hours=1)
 
     def cog_unload(self):
+        logger.info("COG: Unload called")
         self.check.cancel()
 
     @commands.command()
@@ -66,3 +67,12 @@ class TwitchCheck(commands.Cog):
         await self.client.wait_until_ready()
         for guild in self.client.guilds:
             self.channel_ids[guild.id] = r.hget(guild.id, "channel_id")
+
+    @check.after_loop
+    async def after_check(self):
+        if self.check.failed() or self.check.is_being_cancelled():
+            try:
+                self.check.restart()
+            except Exception as e:
+                logger.error(f"COG: check has failed and unable to restart, {e.__traceback__}")
+        logger.info("COG: Loop has finished running")
