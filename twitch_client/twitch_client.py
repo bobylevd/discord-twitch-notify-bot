@@ -18,7 +18,6 @@ class TwitchClient:
     def streamers(self):
         return [s.split(":")[1] for s in r.keys(f"{self.guild_id}:*")]
 
-    @property
     def live_streams(self):
         """
         Return active streams if any
