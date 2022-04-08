@@ -1,5 +1,7 @@
+import asyncio
 import logging
 import datetime
+from concurrent.futures import ThreadPoolExecutor
 
 from discord.ext import commands, tasks
 
@@ -12,6 +14,7 @@ logger = logging.getLogger()
 
 def _get_game_name(guild, stream):
     return r.hget(f"{guild.id}:{stream.user.login}", "game_name").lower()
+
 
 class TwitchCheck(commands.Cog):
     def __init__(self, client):
@@ -33,7 +36,7 @@ class TwitchCheck(commands.Cog):
         logger.info("COG: checking streams")
         for guild in self.client.guilds:
             twitch = TwitchClient(guild.id)
-            streams = twitch.live_streams
+            streams = await asyncio.get_running_loop().run_in_executor(ThreadPoolExecutor(), twitch.live_streams)
 
             channel = self._get_channel(self.channel_ids[guild.id])
             if channel and streams:
@@ -67,12 +70,3 @@ class TwitchCheck(commands.Cog):
         await self.client.wait_until_ready()
         for guild in self.client.guilds:
             self.channel_ids[guild.id] = r.hget(guild.id, "channel_id")
-
-    @check.after_loop
-    async def after_check(self):
-        if self.check.failed() or self.check.is_being_cancelled():
-            try:
-                self.check.restart()
-            except Exception as e:
-                logger.error(f"COG: check has failed and unable to restart, {e.__traceback__}")
-        logger.info("COG: Loop has finished running")
