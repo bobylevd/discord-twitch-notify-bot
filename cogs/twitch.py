@@ -33,7 +33,6 @@ class TwitchCheck(commands.Cog):
 
     @tasks.loop(seconds=60.0)
     async def check(self):
-        logger.info("COG: checking streams")
         for guild in self.client.guilds:
             twitch = TwitchClient(guild.id)
             streams = await asyncio.get_running_loop().run_in_executor(ThreadPoolExecutor(), twitch.live_streams)
