@@ -45,9 +45,9 @@ class TwitchCheck(commands.Cog):
                     should_notify = False
 
                     game = _get_game_name(guild, stream)
-                    if game is not None and game == stream.game_name.lower():
+                    if game and game == stream.game_name.lower():
                         should_notify = self._timestamp_check(guild, stream)
-                    elif game is None:
+                    elif not game:
                         should_notify = self._timestamp_check(guild, stream)
 
                     r.hset(f"{guild.id}:{stream.user.login}", "timestamp", stream.started_at)
