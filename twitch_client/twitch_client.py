@@ -1,8 +1,9 @@
 import logging
 import os
+from typing import Union
 
 import twitch
-from twitch.helix import StreamNotFound
+from twitch.helix import StreamNotFound, Streams
 
 from database import r
 
@@ -18,7 +19,7 @@ class TwitchClient:
     def streamers(self):
         return [s.split(":")[1] for s in r.keys(f"{self.guild_id}:*")]
 
-    def live_streams(self):
+    def live_streams(self) -> Union[Streams, None]:
         """
         Return active streams if any
         :return: `twitch_client.helix.resources.Streams`

@@ -24,7 +24,7 @@ async def on_ready():
 
 
 @bot.command()
-async def add(ctx, streamer_name, game_name):
+async def add(ctx, streamer_name, game_name=None):
     logger.info(f"BOT: adding streamer {streamer_name}, with game {game_name}")
     r.hset(f"{ctx.guild.id}", "channel_id", ctx.channel.id)
     r.hset(f"{ctx.guild.id}:{streamer_name.lower()}", "game_name", game_name)
