@@ -31,27 +31,29 @@ class TwitchCheck(commands.Cog):
     async def status(self, ctx):
         await ctx.message.add_reaction("👌")
 
-    async def _check_streams(self, guild):
-        twitch = TwitchClient(guild.id)
-        streams = await asyncio.get_running_loop().run_in_executor(ThreadPoolExecutor(), twitch.live_streams)
-        if streams:
-            channel = self._get_channel(self.channel_ids[guild.id])
+    @tasks.loop(seconds=60.0)
+    async def check(self):
+        for guild in self.client.guilds:
+            twitch = TwitchClient(guild.id)
+            streams = await asyncio.get_running_loop().run_in_executor(ThreadPoolExecutor(), twitch.live_streams)
+            if streams:
+                channel = self._get_channel(self.channel_ids[guild.id])
 
-            for stream in streams:
-                logger.info(f"COG: stream by {stream.user.login} is live, checking timestamp")
+                for stream in streams:
+                    logger.info(f"COG: stream by {stream.user.login} is live, checking timestamp")
 
-                should_notify = False
+                    should_notify = False
 
-                game = _get_game_name(guild, stream)
-                if game is not None and game == stream.game_name.lower():
-                    should_notify = self._timestamp_check(guild, stream)
-                elif game is None:
-                    should_notify = self._timestamp_check(guild, stream)
+                    game = _get_game_name(guild, stream)
+                    if game is not None and game == stream.game_name.lower():
+                        should_notify = self._timestamp_check(guild, stream)
+                    elif game is None:
+                        should_notify = self._timestamp_check(guild, stream)
 
-                r.hset(f"{guild.id}:{stream.user.login}", "timestamp", stream.started_at)
+                    r.hset(f"{guild.id}:{stream.user.login}", "timestamp", stream.started_at)
 
-                if should_notify:
-                    await self._notify_stream(channel, stream)
+                    if should_notify:
+                        await self._notify_stream(channel, stream)
 
     def _timestamp_check(self, guild, stream) -> bool:
         prev_stamp = r.hget(f"{guild.id}:{stream.user.login}", "timestamp")
