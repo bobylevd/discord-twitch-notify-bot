@@ -40,7 +40,7 @@ class TwitchCheck(commands.Cog):
                 channel = self._get_channel(self.channel_ids[guild.id])
 
                 for stream in streams:
-                    logger.info(f"COG: stream by {stream.user.login} is live, checking timestamp")
+                    logger.debug(f"COG: stream by {stream.user.login} is live, checking timestamp")
 
                     should_notify = False
 
