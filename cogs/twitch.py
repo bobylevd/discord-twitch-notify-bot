@@ -1,5 +1,7 @@
+import asyncio
 import logging
 import datetime
+from concurrent.futures import ThreadPoolExecutor
 
 from discord.ext import commands, tasks
 
@@ -12,6 +14,7 @@ logger = logging.getLogger()
 
 def _get_game_name(guild, stream):
     return r.hget(f"{guild.id}:{stream.user.login}", "game_name").lower()
+
 
 class TwitchCheck(commands.Cog):
     def __init__(self, client):
@@ -30,31 +33,42 @@ class TwitchCheck(commands.Cog):
 
     @tasks.loop(seconds=60.0)
     async def check(self):
-        logger.info("COG: checking streams")
         for guild in self.client.guilds:
             twitch = TwitchClient(guild.id)
-            streams = twitch.live_streams
+            streams = await asyncio.get_running_loop().run_in_executor(ThreadPoolExecutor(), twitch.live_streams)
+            if streams:
+                channel = self._get_channel(self.channel_ids[guild.id])
 
-            channel = self._get_channel(self.channel_ids[guild.id])
-            if channel and streams:
-                for st in filter(lambda s: s.game_name.lower() == _get_game_name(guild, s), streams):
+                for stream in streams:
+                    logger.debug(f"COG: stream by {stream.user.login} is live, checking timestamp")
+
                     should_notify = False
 
-                    logger.info(f"COG: stream by {st.user.login} is live, checking timestamp")
-                    prev_stamp = r.hget(f"{guild.id}:{st.user.login}", "timestamp")
-                    if prev_stamp is not None:
-                        prev_dt = datetime.datetime.strptime(prev_stamp, "%Y-%m-%dT%H:%M:%S%z")
-                        cur_dt = datetime.datetime.strptime(st.started_at, "%Y-%m-%dT%H:%M:%S%z")
-                        if (cur_dt - prev_dt) > self.notification_timeout:
-                            should_notify = True
-                    else:
-                        should_notify = True
+                    game = _get_game_name(guild, stream)
+                    if game and game == stream.game_name.lower():
+                        should_notify = self._timestamp_check(guild, stream)
+                    elif not game:
+                        should_notify = self._timestamp_check(guild, stream)
 
-                    r.hset(f"{guild.id}:{st.user.login}", "timestamp", st.started_at)
+                    r.hset(f"{guild.id}:{stream.user.login}", "timestamp", stream.started_at)
 
                     if should_notify:
-                        logger.info(f"COG: sending embed for {st.user.login}")
-                        await channel.send(embed=generate_embed(st))
+                        await self._notify_stream(channel, stream)
+
+    def _timestamp_check(self, guild, stream) -> bool:
+        prev_stamp = r.hget(f"{guild.id}:{stream.user.login}", "timestamp")
+        if prev_stamp is not None:
+            prev_dt = datetime.datetime.strptime(prev_stamp, "%Y-%m-%dT%H:%M:%S%z")
+            cur_dt = datetime.datetime.strptime(stream.started_at, "%Y-%m-%dT%H:%M:%S%z")
+            if (cur_dt - prev_dt) > self.notification_timeout:
+                return True
+        else:
+            return True
+        return False
+
+    async def _notify_stream(self, channel, stream):
+        logger.info(f"COG: sending embed for {stream.user.login}")
+        await channel.send(embed=generate_embed(stream))
 
     def _get_channel(self, channel_id=None):
         if channel_id is not None:
@@ -67,12 +81,3 @@ class TwitchCheck(commands.Cog):
         await self.client.wait_until_ready()
         for guild in self.client.guilds:
             self.channel_ids[guild.id] = r.hget(guild.id, "channel_id")
-
-    @check.after_loop
-    async def after_check(self):
-        if self.check.failed() or self.check.is_being_cancelled():
-            try:
-                self.check.restart()
-            except Exception as e:
-                logger.error(f"COG: check has failed and unable to restart, {e.__traceback__}")
-        logger.info("COG: Loop has finished running")

@@ -1,3 +1,3 @@
-git+git://github.com/bobylevd/Twitch-Python@master
-redis
+git+https://github.com/bobylevd/Twitch-Python@master
+redis<4.2.0
 discord.py
